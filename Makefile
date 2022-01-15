@@ -17,4 +17,10 @@ clean:
 	rm -rm static/main.wasm
 
 package: build
-	docker build -t dcob/works:latest .
+	docker build -t hydezhao/worker:latest .
+
+push: package
+	docker push  hydezhao/worker:latest
+
+run: package
+	docker run --name=worker01 -d -p 8080:80 hydezhao/worker:latest
