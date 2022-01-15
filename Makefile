@@ -24,3 +24,6 @@ push: package
 
 run: package
 	docker run --name=worker01 -d -p 8080:80 hydezhao/worker:latest
+
+slim:
+	tinygo build -opt z -o ./static/tinygo.wasm -target wasm ./main.go

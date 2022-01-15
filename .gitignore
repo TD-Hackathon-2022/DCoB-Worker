@@ -3,3 +3,4 @@
 /.idea/modules.xml
 /.idea/vcs.xml
 /static/main.wasm
+/static/tinygo.wasm
