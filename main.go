@@ -7,7 +7,7 @@ import (
 
 func test() {
 
-	ws := js.Global().Get("WebSocket").New("ws://localhost:8080/ws")
+	ws := js.Global().Get("WebSocket").New("ws://XXXX:8080/ws")
 
 	ws.Call("addEventListener", "open", js.FuncOf(func(this js.Value, args []js.Value) interface{} {
 		fmt.Println("open")
