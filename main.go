@@ -1,21 +1,35 @@
-package worker
+package main
 
 import (
 	"fmt"
 	"syscall/js"
 )
 
-func test() {
+func registerCallbacks(ws js.Value) {
+	ws.Call("addEventListener", "message", js.FuncOf(func(this js.Value, args []js.Value) interface{} {
+		message := args[0].Get("data").String()
+		fmt.Println("message registerCallbacks ")
 
-	ws := js.Global().Get("WebSocket").New("ws://XXXX:8080/ws")
+		fmt.Println(message)
+		return nil
+	}))
+}
 
+func sendCallbacks(ws js.Value) {
 	ws.Call("addEventListener", "open", js.FuncOf(func(this js.Value, args []js.Value) interface{} {
-		fmt.Println("open")
-		ws.Call("send", js.ValueOf([]byte{123}))
+
+		ws.Call("send", js.ValueOf("{cmd}"))
+		/*		message := args[0].Get("data").String()
+				fmt.Println("message sendCallbacks ")
+				fmt.Println(message)*/
 		return nil
 	}))
 }
 
 func main() {
-	test()
+	c := make(chan struct{}, 0)
+	ws := js.Global().Get("WebSocket").New("ws://127.0.0.1:8080")
+	sendCallbacks(ws)
+	registerCallbacks(ws)
+	<-c
 }
