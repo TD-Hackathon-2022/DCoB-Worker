@@ -70,6 +70,8 @@ func CloseCallbacks(ws js.Value) {
 
 func messageHandler(ws js.Value, message *Msg, exec executor.Executor) {
 	switch message.Cmd {
+	case CMD_Register:
+		fmt.Println("Registered successfully")
 	case CMD_Assign:
 		exec.Start()
 		fmt.Println("Assign task:" + message.GetAssign().TaskId)
