@@ -10,25 +10,26 @@ import (
 )
 
 var (
-	RegisterBody = &Msg{Cmd: CMD_Register}
-	CloseBody    = &Msg{Cmd: CMD_Close}
+	RegisterBody = &Msg{Cmd: CMD_Register, Payload: &Msg_Empty{Empty: &EmptyPayload{}}}
+	CloseBody    = &Msg{Cmd: CMD_Close, Payload: &Msg_Empty{Empty: &EmptyPayload{}}}
 )
 
 func ReceiveCallbacks(ws js.Value) {
 	ws.Call("addEventListener", "message", js.FuncOf(func(this js.Value, args []js.Value) interface{} {
-		buffer := args[0]
-		uint8Array := js.Global().Get("Uint8Array").New(buffer)
-		data := make([]byte, uint8Array.Get("length").Int())
-		js.CopyBytesToGo(data, uint8Array)
-		fmt.Println("message ReceiveCallbacks: ")
-		var receiveMsg = &Msg{}
-		err := proto.Unmarshal(data, receiveMsg)
-		if err != nil {
-			fmt.Println(err)
-		}
-		fmt.Printf("cmd is: %v\n", receiveMsg.Cmd)
-		//TODO func builder gen hash Coins
-		messageHandler(ws, receiveMsg, executor.NewHashCoins(receiveMsg))
+		args[0].Get("data").Call("arrayBuffer").Call("then", js.FuncOf(func(this js.Value, args []js.Value) interface{} {
+			uint8Array := js.Global().Get("Uint8Array").New(args[0])
+			data := make([]byte, uint8Array.Get("length").Int())
+			js.CopyBytesToGo(data, uint8Array)
+			var receiveMsg = &Msg{}
+			err := proto.Unmarshal(data, receiveMsg)
+			if err != nil {
+				fmt.Println(err)
+			}
+			fmt.Printf("ReceiveCallbacks recieved: %v\n", receiveMsg)
+			//TODO func builder gen hash Coins
+			messageHandler(ws, receiveMsg, executor.NewHashCoins(receiveMsg))
+			return nil
+		}))
 		return nil
 	}))
 }
@@ -72,13 +73,15 @@ func messageHandler(ws js.Value, message *Msg, exec executor.Executor) {
 	switch message.Cmd {
 	case CMD_Register:
 		fmt.Println("Registered successfully")
-	case CMD_Assign:
-		exec.Start()
-		fmt.Println("Assign task:" + message.GetAssign().TaskId)
 	case CMD_Close:
+		fmt.Println("Interrupt task:" + message.GetInterrupt().TaskId)
 		msg := exec.Interrupt()
 		sendMsg(ws, msg)
-		fmt.Println("Interrupt task:" + message.GetAssign().TaskId)
+	case CMD_Assign:
+		fmt.Println("Assign task:" + message.GetAssign().TaskId)
+		exec.Start()
+		fmt.Println("Task finished:" + message.GetAssign().TaskId)
+		sendMsg(ws, exec.Status())
 	default:
 		// CMD_Status
 		for {

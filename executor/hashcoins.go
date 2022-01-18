@@ -5,6 +5,7 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/base64"
+	"fmt"
 	. "github.com/TD-Hackathon-2022/DCoB-Scheduler/api"
 	"math/rand"
 	"strconv"
@@ -19,18 +20,18 @@ type hashCoins struct {
 
 func NewHashCoins(m *Msg) *hashCoins {
 	ctx, cancel := context.WithCancel(context.Background())
-	ctx2 := context.WithValue(ctx, "task", m)
 	return &hashCoins{
-		ctx:    ctx2,
+		ctx:    context.WithValue(ctx, "task", m),
 		cancel: cancel,
 		sobel:  miningCoins,
 	}
 }
 
-func (h hashCoins) Start() {
+func (h *hashCoins) Start() {
+	defer h.cancel()
 	assignTask, _ := h.ctx.Value("task").(*Msg)
-	Bit, _ := strconv.Atoi(assignTask.GetAssign().Data)
-	data := h.sobel(Bit).([]byte)
+	bit, _ := strconv.Atoi(assignTask.GetAssign().Data)
+	data := h.sobel(bit).([]byte)
 	sENC := base64.StdEncoding.EncodeToString(data)
 	msg := &Msg{
 		Cmd: CMD_Status,
@@ -44,10 +45,10 @@ func (h hashCoins) Start() {
 		},
 	}
 	h.ctx = context.WithValue(h.ctx, "result", msg)
-	defer h.cancel()
+	fmt.Printf("Result found: %v\n", msg)
 }
 
-func (h hashCoins) Status() *Msg {
+func (h *hashCoins) Status() *Msg {
 	assignTask, _ := h.ctx.Value("task").(*Msg)
 	msg := &Msg{
 		Cmd: CMD_Status,
@@ -60,16 +61,15 @@ func (h hashCoins) Status() *Msg {
 			},
 		},
 	}
-	select {
-	case <-h.ctx.Done():
-		msg, _ = h.ctx.Value("result").(*Msg)
-		return msg
-	default:
-		return msg
+
+	if result, exist := h.ctx.Value("result").(*Msg); exist {
+		return result
 	}
+
+	return msg
 }
 
-func (h hashCoins) Interrupt() *Msg {
+func (h *hashCoins) Interrupt() *Msg {
 	assignTask, _ := h.ctx.Value("task").(*Msg)
 	msg := &Msg{
 		Cmd: CMD_Status,
