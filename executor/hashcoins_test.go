@@ -1,10 +1,11 @@
 package executor
 
 import (
-	"bytes"
 	"context"
+	"encoding/hex"
 	"fmt"
 	. "github.com/smartystreets/goconvey/convey"
+	"strings"
 	"testing"
 	"time"
 )
@@ -12,7 +13,7 @@ import (
 func ShouldByteHas(actual interface{}, expected ...interface{}) string {
 	data, _ := actual.([]byte)
 	subData2, _ := expected[0].([]byte)
-	if !bytes.HasPrefix(data, subData2) {
+	if !strings.HasPrefix(hex.EncodeToString(data), string(subData2)) {
 		return fmt.Sprintf("Data does not start with %v\n", expected[0])
 	}
 	return ""
@@ -20,8 +21,10 @@ func ShouldByteHas(actual interface{}, expected ...interface{}) string {
 
 func Test_miningCoins(t *testing.T) {
 	Convey("The data starts with [0,0,0]", t, func() {
-		data := miningCoins(3)
-		So(data, ShouldByteHas, []byte{0, 0, 0})
+		bits := 4
+		data := miningCoins(bits)
+		fmt.Println(hex.EncodeToString(data.([]byte)[:8]))
+		So(data, ShouldByteHas, strings.Repeat("0", bits))
 	})
 }
 

@@ -26,8 +26,7 @@ func ReceiveCallbacks(ws js.Value) {
 				fmt.Println(err)
 			}
 			fmt.Printf("ReceiveCallbacks recieved: %v\n", receiveMsg)
-			//TODO func builder gen hash Coins
-			messageHandler(ws, receiveMsg, executor.NewHashCoins(receiveMsg))
+			messageHandler(ws, receiveMsg, executor.ExecutorBuilder(receiveMsg))
 			return nil
 		}))
 		return nil

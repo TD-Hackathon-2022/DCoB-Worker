@@ -1,14 +1,15 @@
 package executor
 
 import (
-	"bytes"
 	"context"
 	"crypto/sha256"
 	"encoding/base64"
+	"encoding/hex"
 	"fmt"
 	. "github.com/TD-Hackathon-2022/DCoB-Scheduler/api"
 	"math/rand"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -101,13 +102,14 @@ func genSource() <-chan []byte {
 
 func miningCoins(pam ...interface{}) interface{} {
 	srcChan := genSource()
-	Rulers := make([]byte, pam[0].(int))
+	Ruler := strings.Repeat("0", pam[0].(int))
 	coin := make([]byte, 32)
 	for src := range srcChan {
-		if bytes.HasPrefix(src, Rulers) {
+		tmpStr := hex.EncodeToString(src)
+		if strings.HasPrefix(tmpStr, Ruler) {
 			coin = src
 			return coin
 		}
 	}
-	return coin
+	panic("can't execute to this point")
 }
