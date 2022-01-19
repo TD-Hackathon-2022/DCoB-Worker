@@ -4,9 +4,9 @@ import (
 	"fmt"
 	. "github.com/TD-Hackathon-2022/DCoB-Scheduler/api"
 	"google.golang.org/protobuf/proto"
+	"sync"
 	"syscall/js"
-	"time"
-	"worker/executor"
+	. "worker/executor"
 )
 
 var (
@@ -26,7 +26,7 @@ func ReceiveCallbacks(ws js.Value) {
 				fmt.Println(err)
 			}
 			fmt.Printf("ReceiveCallbacks recieved: %v\n", receiveMsg)
-			messageHandler(ws, receiveMsg, executor.ExecutorBuilder(receiveMsg))
+			messageHandler(ws, receiveMsg)
 			return nil
 		}))
 		return nil
@@ -68,26 +68,49 @@ func CloseCallbacks(ws js.Value) {
 	}))
 }
 
-func messageHandler(ws js.Value, message *Msg, exec executor.Executor) {
+var exec Executor = nil
+var lock sync.RWMutex
+
+func messageHandler(ws js.Value, message *Msg) {
 	switch message.Cmd {
 	case CMD_Register:
 		fmt.Println("Registered successfully")
-	case CMD_Close:
-		fmt.Println("Interrupt task:" + message.GetInterrupt().TaskId)
-		msg := exec.Interrupt()
-		sendMsg(ws, msg)
-	case CMD_Assign:
-		fmt.Println("Assign task:" + message.GetAssign().TaskId)
-		exec.Start()
-		fmt.Println("Task finished:" + message.GetAssign().TaskId)
-		sendMsg(ws, exec.Status())
-	default:
-		// CMD_Status
-		for {
-			time.Sleep(time.Second * 2)
-			msg := exec.Status()
+	case CMD_Interrupt:
+		fmt.Printf("Interrupt task: %s\n", message.GetInterrupt().TaskId)
+		lock.RLock()
+		lock.RUnlock()
+		if exec != nil {
+			msg := exec.Interrupt()
 			sendMsg(ws, msg)
 		}
-	}
+	case CMD_Assign:
+		fmt.Printf("Assign task: %s\n", message.GetAssign().TaskId)
+		e := ExecutorBuilder(message)
+		lock.Lock()
+		defer lock.Unlock()
+		if exec != nil && exec.Status().GetStatus().TaskStatus == TaskStatus_Running {
+			result := fmt.Sprintf("Cannot assign task: %s, current task %s still running!",
+				message.GetAssign().TaskId,
+				e.Status().GetStatus().TaskId)
+			fmt.Println(result)
+			sendMsg(ws, &Msg{
+				Cmd: CMD_Status,
+				Payload: &Msg_Status{
+					Status: &StatusPayload{
+						WorkStatus: WorkerStatus_Busy,
+						TaskId:     message.GetAssign().TaskId,
+						TaskStatus: TaskStatus_Error,
+						ExecResult: result,
+					},
+				},
+			})
+			return
+		}
 
+		exec = e
+		e.Start()
+		fmt.Printf("Task finished: %s\n", message.GetAssign().TaskId)
+
+		sendMsg(ws, e.Status())
+	}
 }
