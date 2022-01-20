@@ -108,7 +108,8 @@ func miningCoins(pam ...interface{}) interface{} {
 	for src := range srcChan {
 		tmpStr := hex.EncodeToString(src)
 		if strings.HasPrefix(tmpStr, Ruler) {
-			htmlprinter.PrintPHtml("Coin found:" + tmpStr[:8])
+			time.Sleep(time.Second * 1)
+			htmlprinter.AppendHtml("Coin found:" + tmpStr[:32])
 			coin = src
 			return coin
 		}

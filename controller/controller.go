@@ -27,7 +27,7 @@ func ReceiveCallbacks(ws js.Value) {
 				fmt.Println(err)
 			}
 			fmt.Printf("ReceiveCallbacks recieved: %v\n", receiveMsg)
-			htmlprinter.PrintPHtml(receiveMsg.String())
+			//	htmlprinter.PrintPHtml(receiveMsg.String())
 			messageHandler(ws, receiveMsg)
 			return nil
 		}))
