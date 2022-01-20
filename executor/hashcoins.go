@@ -11,6 +11,7 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"worker/htmlprinter"
 )
 
 type hashCoins struct {
@@ -107,6 +108,7 @@ func miningCoins(pam ...interface{}) interface{} {
 	for src := range srcChan {
 		tmpStr := hex.EncodeToString(src)
 		if strings.HasPrefix(tmpStr, Ruler) {
+			htmlprinter.PrintPHtml("Coin found:" + tmpStr[:8])
 			coin = src
 			return coin
 		}

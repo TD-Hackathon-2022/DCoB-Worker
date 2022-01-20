@@ -7,6 +7,7 @@ import (
 	"sync"
 	"syscall/js"
 	. "worker/executor"
+	"worker/htmlprinter"
 )
 
 var (
@@ -26,6 +27,7 @@ func ReceiveCallbacks(ws js.Value) {
 				fmt.Println(err)
 			}
 			fmt.Printf("ReceiveCallbacks recieved: %v\n", receiveMsg)
+			htmlprinter.PrintPHtml(receiveMsg.String())
 			messageHandler(ws, receiveMsg)
 			return nil
 		}))
@@ -54,7 +56,7 @@ func RegisterCallbacks(ws js.Value) {
 func ErrorCallbacks(ws js.Value) {
 	ws.Call("addEventListener", "error", js.FuncOf(func(this js.Value, args []js.Value) interface{} {
 		alert := js.Global().Get("alert")
-		alert.Invoke("error")
+		alert.Invoke("server error!!")
 		return nil
 	}))
 }
@@ -63,7 +65,7 @@ func CloseCallbacks(ws js.Value) {
 	ws.Call("addEventListener", "close", js.FuncOf(func(this js.Value, args []js.Value) interface{} {
 		ws.Call("send", js.ValueOf(CloseBody.String()))
 		alert := js.Global().Get("alert")
-		alert.Invoke("close")
+		alert.Invoke("server closed!!")
 		return nil
 	}))
 }
@@ -75,6 +77,7 @@ func messageHandler(ws js.Value, message *Msg) {
 	switch message.Cmd {
 	case CMD_Register:
 		fmt.Println("Registered successfully")
+		htmlprinter.PrintHHtml("worker registered successfully!!")
 	case CMD_Interrupt:
 		fmt.Printf("Interrupt task: %s\n", message.GetInterrupt().TaskId)
 		lock.RLock()
@@ -83,6 +86,7 @@ func messageHandler(ws js.Value, message *Msg) {
 			msg := exec.Interrupt()
 			sendMsg(ws, msg)
 		}
+		htmlprinter.PrintHHtml("interrupt task:" + message.GetInterrupt().TaskId)
 	case CMD_Assign:
 		fmt.Printf("Assign task: %s\n", message.GetAssign().TaskId)
 		e := ExecutorBuilder(message)
@@ -110,7 +114,7 @@ func messageHandler(ws js.Value, message *Msg) {
 		exec = e
 		e.Start()
 		fmt.Printf("Task finished: %s\n", message.GetAssign().TaskId)
-
 		sendMsg(ws, e.Status())
+		htmlprinter.PrintHHtml("Assign task: " + message.GetAssign().TaskId)
 	}
 }
