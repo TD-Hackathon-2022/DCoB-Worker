@@ -52,10 +52,17 @@ func newCustomFunc(prefix string, task *Msg, funcBodyContent []byte) *customFunc
 func (h *customFunc) Start(thenDo func()) {
 	js.Global().
 		Get("WebAssembly").
-		Call("instantiate", h.funcBody, make(map[string]interface{})).
+		Call("instantiate", h.funcBody, js.Global().Get("WbgImports")).
 		Call("then", js.FuncOf(func(this js.Value, args []js.Value) interface{} {
-			wasmModule := args[0]
-			h.result = wasmModule.Get("instance").Get("exports").Call(h.prefix + "_start").String()
+			wasmExports := args[0].Get("instance").Get("exports")
+			js.Global().Get("WbgImports").Set("wasm", wasmExports)
+			res := wasmExports.Call(h.prefix + "_start")
+			switch res.Type() {
+			case js.TypeNumber:
+				h.result = fmt.Sprintf("%f", res.Float())
+			case js.TypeString:
+				h.result = res.String()
+			}
 			fmt.Printf("finished! result: %s\n", h.result)
 			thenDo()
 			return nil

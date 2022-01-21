@@ -14,7 +14,7 @@ test:
 
 clean:
 	go clean -i -r -testcache -cache
-	rm -rm static/main.wasm
+	rm -rf static/main.wasm
 
 package: build
 	docker build -t hydezhao/worker:latest .
