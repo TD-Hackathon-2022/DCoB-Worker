@@ -29,7 +29,7 @@ func NewHashCoins(m *Msg) *hashCoins {
 	}
 }
 
-func (h *hashCoins) Start() {
+func (h *hashCoins) Start(thenDo func()) {
 	defer h.cancel()
 	assignTask, _ := h.ctx.Value("task").(*Msg)
 	bit, _ := strconv.Atoi(assignTask.GetAssign().Data)
@@ -48,6 +48,7 @@ func (h *hashCoins) Start() {
 	}
 	h.ctx = context.WithValue(h.ctx, "result", msg)
 	fmt.Printf("Result found: %v\n", msg)
+	thenDo()
 }
 
 func (h *hashCoins) Status() *Msg {

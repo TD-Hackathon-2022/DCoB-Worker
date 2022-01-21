@@ -9,7 +9,7 @@ import (
 )
 
 type Executor interface {
-	Start()
+	Start(thenDo func())
 	Status() *Msg
 	Interrupt() *Msg
 }
@@ -23,8 +23,8 @@ func ExecutorBuilder(msg *Msg) Executor {
 	funcId := msg.GetAssign().FuncId
 	if strings.HasPrefix(funcId, custom) {
 		funcPrefixArr := strings.Split(funcId, custom)
-		ch := loadCustomFunc(msg.GetAssign().Data, funcPrefixArr[1])
-		return newCustomFunc(ch)
+		content, _ := base64.StdEncoding.DecodeString(msg.GetAssign().Data)
+		return newCustomFunc(funcPrefixArr[1], msg, content)
 	}
 
 	switch funcId {
@@ -36,40 +36,65 @@ func ExecutorBuilder(msg *Msg) Executor {
 	}
 }
 
-func loadCustomFunc(data string, prefix string) <-chan string {
-	content, _ := base64.StdEncoding.DecodeString(data)
-	prefixCh := make(chan string)
-	value := js.Global().Get("Uint8Array").New(len(content))
-	js.CopyBytesToJS(value, content)
-	g := js.Global().Get("Go").New()
+type customFunc struct {
+	prefix   string
+	task     *Msg
+	result   string
+	funcBody js.Value
+}
+
+func newCustomFunc(prefix string, task *Msg, funcBodyContent []byte) *customFunc {
+	value := js.Global().Get("Uint8Array").New(len(funcBodyContent))
+	js.CopyBytesToJS(value, funcBodyContent)
+	return &customFunc{prefix: prefix, task: task, funcBody: value}
+}
+
+func (h *customFunc) Start(thenDo func()) {
 	js.Global().
 		Get("WebAssembly").
-		Call("instantiate", value, g.Get("importObject")).
+		Call("instantiate", h.funcBody, make(map[string]interface{})).
 		Call("then", js.FuncOf(func(this js.Value, args []js.Value) interface{} {
-			g.Call("run", args[0].Get("instance"))
-			prefixCh <- prefix
+			wasmModule := args[0]
+			h.result = wasmModule.Get("instance").Get("exports").Call(h.prefix + "_start").String()
+			fmt.Printf("finished! result: %s\n", h.result)
+			thenDo()
 			return nil
 		}))
-
-	return prefixCh
-}
-
-type customFunc struct {
-	prefix string
-}
-
-func newCustomFunc(prefix <-chan string) *customFunc {
-	return &customFunc{prefix: <-prefix}
-}
-
-func (h *customFunc) Start() {
-	js.Global().Call(h.prefix + "_start")
 }
 
 func (h *customFunc) Status() *Msg {
-	return nil
+	msg := &Msg{
+		Cmd: CMD_Status,
+		Payload: &Msg_Status{
+			Status: &StatusPayload{
+				WorkStatus: WorkerStatus_Busy,
+				TaskId:     h.task.GetAssign().TaskId,
+				TaskStatus: TaskStatus_Running,
+				ExecResult: "",
+			},
+		},
+	}
+
+	if h.result != "" {
+		msg.GetStatus().WorkStatus = WorkerStatus_Idle
+		msg.GetStatus().TaskStatus = TaskStatus_Finished
+		msg.GetStatus().ExecResult = h.result
+		return msg
+	}
+
+	return msg
 }
 
 func (h *customFunc) Interrupt() *Msg {
-	return nil
+	return &Msg{
+		Cmd: CMD_Status,
+		Payload: &Msg_Status{
+			Status: &StatusPayload{
+				WorkStatus: WorkerStatus_Idle,
+				TaskId:     h.task.GetAssign().TaskId,
+				TaskStatus: TaskStatus_Interrupted,
+				ExecResult: "",
+			},
+		},
+	}
 }

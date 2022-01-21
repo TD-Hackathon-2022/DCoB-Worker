@@ -112,9 +112,10 @@ func messageHandler(ws js.Value, message *Msg) {
 		}
 
 		exec = e
-		e.Start()
-		fmt.Printf("Task finished: %s\n", message.GetAssign().TaskId)
-		sendMsg(ws, e.Status())
-		htmlprinter.PrintHHtml("Assign task: " + message.GetAssign().TaskId)
+		e.Start(func() {
+			fmt.Printf("Task finished: %s\n", message.GetAssign().TaskId)
+			sendMsg(ws, e.Status())
+			htmlprinter.PrintHHtml("Assign task: " + message.GetAssign().TaskId)
+		})
 	}
 }
