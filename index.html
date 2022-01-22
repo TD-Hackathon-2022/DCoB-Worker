@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<meta name="viewport" content="width=device-width, initial-scale=1" charset="UTF-8">
+<link rel="stylesheet"
+      href="github-markdown-dark.css">
+<head>
+    <meta charset="UTF-8">
+    <title>worker</title>
+    <script src="./wasm_exec.js"></script>
+    <script src="./wbg_imports.js"></script>
+    <script>
+        if (!WebAssembly.instantiateStreaming) {
+            WebAssembly.instantiateStreaming = async (resp, importObject) => {
+                const source = await (await resp).arrayBuffer();
+                return await WebAssembly.instantiate(source, importObject);
+            };
+        }
+        const go = new Go();
+        WebAssembly.instantiateStreaming(fetch("./main.wasm"), go.importObject)
+            .then((result) => go.run(result.instance));
+    </script>
+</head>
+<style>
+    .markdown-body {
+        box-sizing: border-box;
+        min-width: 200px;
+        max-width: 980px;
+        margin: 0 auto;
+        padding: 45px;
+    }
+
+    @media (max-width: 767px) {
+        .markdown-body {
+            padding: 15px;
+        }
+    }
+</style>
+<body class="markdown-body">
+<h1>Task list</h1>
+<p>被分配的list</p>
+<pre>
+    <div id="div1" style='width:960px;height:200px;margin:0 auto'>
+    <code id="tasklist"></code>
+</div>
+</pre>
+<h1>worker status</h1>
+<pre>
+    <div id="div2" style='width:960px;height:200px;margin:0 auto'>
+    <code id="taskstatus"></code>
+</div>
+</pre>
+<div class="test" id="test">
+</div>
+</body>
+</html>
